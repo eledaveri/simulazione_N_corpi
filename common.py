@@ -444,9 +444,129 @@ def plot_initial_conditions(
         
     plt.show()
     
+def acceleration(
+    a: np.ndarray,
+    system: System,
+) -> None:
+    """
+    Compute the gravitational acceleration
 
+    Parameters
+    ----------
+    a : np.ndarray
+        Gravitational accelerations array to be modified in-place,
+        with shape (N, 3)
+    system : System
+        System object.
+    """
+    # Empty acceleration array
+    a.fill(0.0)
+
+    # Declare variables
+    x = system.x
+    m = system.m
+    G = system.G
+
+    # Compute the displacement vector
+    r_ij = x[:, np.newaxis, :] - x[np.newaxis, :, :]
+
+    # Compute the distance
+    r_norm = np.linalg.norm(r_ij, axis=2)
+
+    # Compute 1 / r^3
+    with np.errstate(divide="ignore", invalid="ignore"):
+        inv_r_cubed = 1.0 / (r_norm * r_norm * r_norm)
+
+    # Set diagonal elements to 0 to avoid self-interaction
+    np.fill_diagonal(inv_r_cubed, 0.0)
+
+    # Compute the acceleration
+    a[:] = G * np.einsum("ijk,ij,i->jk", r_ij, inv_r_cubed, m)
+    
+def euler(a: np.ndarray, system: System, dt: float) -> None:
+    """
+    Advance one step with the Euler's method.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Gravitational accelerations array with shape (N, 3).
+    system : System
+        System object.
+    dt : float
+        Time step.
+    """
+    acceleration(a, system)
+    system.x += system.v * dt
+    system.v += a * dt
+
+
+def print_simulation_info_fixed_step_size(
+    system: System,
+    tf: float,
+    dt: float,
+    num_steps: int,
+    output_interval: float,
+    sol_size: int,
+) -> None:
+    print("----------------------------------------------------------")
+    print("Simulation Info:")
+    print(f"num_particles: {system.num_particles}")
+    print(f"G: {system.G}")
+    print(f"tf: {tf} days (Actual tf = dt * num_steps = {dt * num_steps} days)")
+    print(f"dt: {dt} days")
+    print(f"Num_steps: {num_steps}")
+    print()
+    print(f"Output interval: {output_interval} days")
+    print(f"Estimated solution size: {sol_size}")
+    print("----------------------------------------------------------")
 
     
+def plot_trajectory(
+    sol_x: np.ndarray,
+    labels: list,
+    colors: list,
+    legend: bool,
+) -> None:
+    """
+    Plot the 2D trajectory.
+
+    Parameters
+    ----------
+    sol_x : np.ndarray
+        Solution position array with shape (N_steps, num_particles, 3).
+    labels : list
+        List of labels for the particles.
+    colors : list
+        List of colors for the particles.
+    legend : bool
+        Whether to show the legend.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect="equal")
+    ax.set_xlabel("$x$ (AU)")
+    ax.set_ylabel("$y$ (AU)")
+
+    for i in range(sol_x.shape[1]):
+        traj = ax.plot(
+            sol_x[:, i, 0],
+            sol_x[:, i, 1],
+            color=colors[i],
+        )
+        # Plot the last position with marker
+        ax.scatter(
+            sol_x[-1, i, 0],
+            sol_x[-1, i, 1],
+            marker="o",
+            color=traj[0].get_color(),
+            label=labels[i],
+        )
+
+    if legend:
+        fig.legend(loc="center right", borderaxespad=0.2)
+        fig.tight_layout()
+
+    plt.show()
 
         
             
