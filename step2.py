@@ -1,26 +1,36 @@
 import math
 import timeit
+
 import numpy as np
+
 import common
 
 INITIAL_CONDITION = "solar_system"
 NUM_REPEATS = 10000
 
+
 def main() -> None:
+    # Get initial conditions
     system, _, _, _ = common.get_initial_conditions(INITIAL_CONDITION)
-    ##BENCHMARK
-    print("Benchmarking con 10000 ripetizioni")
+
+    ### Benchmark ###
+    print("Benchmarking with 10000 repetitions")
     print()
+
+    # Allocate memory
     a = np.zeros((system.num_particles, 3))
+
     # Acceleration 1
-    run_time1 = np.zeros(NUM_REPEATS)
+    run_time_1 = np.zeros(NUM_REPEATS)
     for i in range(NUM_REPEATS):
         start = timeit.default_timer()
         acceleration_1(a, system)
         end = timeit.default_timer()
-        run_time1[i] = end - start
-    print(f"acceleration_1: {run_time1.mean():.6f} +- {run_time1.std(ddof=1) / math.sqrt(NUM_REPEATS):.3g} secondi")
-        
+        run_time_1[i] = end - start
+    print(
+        f"acceleration_1: {run_time_1.mean():.6f} +- {run_time_1.std(ddof=1) / math.sqrt(NUM_REPEATS):.3g} seconds"
+    )
+
     # Acceleration 2
     run_time_2 = np.zeros(NUM_REPEATS)
     for i in range(NUM_REPEATS):
@@ -53,7 +63,7 @@ def main() -> None:
     print(
         f"acceleration_4: {run_time_4.mean():.6f} +- {run_time_4.std(ddof=1) / math.sqrt(NUM_REPEATS):.3g} seconds"
     )
-    
+
     ### Error check ###
     acceleration_1(a, system)
     a_1 = a.copy()
@@ -73,58 +83,75 @@ def main() -> None:
     print(f"acceleration_2: {rel_error_2:.3g}")
     print(f"acceleration_3: {rel_error_3:.3g}")
     print(f"acceleration_4: {rel_error_4:.3g}")
-    
-def acceleration_1 (
+
+
+def acceleration_1(
     a: np.ndarray,
-    system: common.System
+    system: common.System,
 ) -> None:
     """
-    Compute the acceleration of the particles in the system.
-    
+    Compute the gravitational acceleration
+
     Parameters
     ----------
     a : np.ndarray
-        Acceleration array to be filled.
+        Gravitational accelerations array to be modified in-place,
+        with shape (N, 3)
     system : System
-        System object with initial conditions.
+        System object.
     """
+    # Empty acceleration array
     a.fill(0.0)
+
+    # Declare variables
     num_particles = system.num_particles
     x = system.x
     m = system.m
     G = system.G
+
+    # Calculations
     for i in range(num_particles):
         for j in range(num_particles):
-            if i != j:
-                R = x[j] - x[i]
-                a[i] += G * m[j] * R / (np.linalg.norm(R)**3)
-                
-def acceleration_2 (
+            if i == j:
+                continue
+
+            R = x[j] - x[i]
+            a[i] += G * m[j] * R / (np.linalg.norm(R) ** 3)
+
+
+def acceleration_2(
     a: np.ndarray,
-    system: common.System
+    system: common.System,
 ) -> None:
     """
-    Compute the acceleration of the particles in the system.
-    
+    Compute the gravitational acceleration
+
     Parameters
     ----------
     a : np.ndarray
-        Acceleration array to be filled.
+        Gravitational accelerations array to be modified in-place,
+        with shape (N, 3)
     system : System
-        System object with initial conditions.
+        System object.
     """
+    # Empty acceleration array
     a.fill(0.0)
+
+    # Declare variables
     num_particles = system.num_particles
     x = system.x
     m = system.m
     G = system.G
+
+    # Calculations
     for i in range(num_particles):
-        for j in range(i+1, num_particles):
+        for j in range(i + 1, num_particles):
             R = x[j] - x[i]
             temp_value = G * R / (np.linalg.norm(R) ** 3)
             a[i] += temp_value * m[j]
             a[j] -= temp_value * m[i]
-            
+
+
 def acceleration_3(
     a: np.ndarray,
     system: common.System,
@@ -155,7 +182,7 @@ def acceleration_3(
     r_norm = np.linalg.norm(r_ij, axis=2)
 
     # Compute 1 / r^3
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         inv_r_cubed = 1.0 / (r_norm * r_norm * r_norm)
 
     # Set diagonal elements to 0 to avoid self-interaction
@@ -165,8 +192,8 @@ def acceleration_3(
     a[:] = G * np.sum(
         r_ij * inv_r_cubed[:, :, np.newaxis] * m[:, np.newaxis, np.newaxis], axis=0
     )
-    
-    
+
+
 def acceleration_4(
     a: np.ndarray,
     system: common.System,
@@ -197,7 +224,7 @@ def acceleration_4(
     r_norm = np.linalg.norm(r_ij, axis=2)
 
     # Compute 1 / r^3
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         inv_r_cubed = 1.0 / (r_norm * r_norm * r_norm)
 
     # Set diagonal elements to 0 to avoid self-interaction
@@ -205,6 +232,7 @@ def acceleration_4(
 
     # Compute the acceleration
     a[:] = G * np.einsum("ijk,ij,i->jk", r_ij, inv_r_cubed, m)
-    
+
+
 if __name__ == "__main__":
     main()

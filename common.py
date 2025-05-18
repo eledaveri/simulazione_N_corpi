@@ -568,5 +568,194 @@ def plot_trajectory(
 
     plt.show()
 
-        
+
+def compute_rel_energy_error(
+    sol_x: np.ndarray, sol_v: np.ndarray, system: System
+) -> np.ndarray:
+    """
+    Compute the relative energy error of the simulation.
+
+    Parameters
+    ----------
+    sol_x : np.ndarray
+        Solution position array with shape (N_steps, num_particles, 3).
+    sol_v : np.ndarray
+        Solution velocity array with shape (N_steps, num_particles, 3).
+    system : System
+        System object.
+
+    Returns
+    -------
+    energy_error : np.ndarray
+        Relative energy error of the simulation, with shape (N_steps,).
+    """
+    # Allocate memory and initialize arrays
+    n_steps = sol_x.shape[0]
+    num_particles = system.num_particles
+    m = system.m
+    G = system.G
+    rel_energy_error = np.zeros(n_steps)
+
+    # Compute the total energy (KE + PE)
+    for count in range(n_steps):
+        x = sol_x[count]
+        v = sol_v[count]
+        for i in range(num_particles):
+            # KE
+            rel_energy_error[count] += 0.5 * m[i] * np.linalg.norm(v[i]) ** 2
+            # PE
+            for j in range(i + 1, num_particles):
+                rel_energy_error[count] -= G * m[i] * m[j] / np.linalg.norm(x[i] - x[j])
+
+    # Compute the relative energy error
+    initial_energy = rel_energy_error[0]
+    rel_energy_error = (rel_energy_error - initial_energy) / initial_energy
+    rel_energy_error = np.abs(rel_energy_error)
+
+    return rel_energy_error
+
+def plot_rel_energy_error(rel_energy_error: np.ndarray, sol_t: np.ndarray) -> None:
+    """
+    Plot the relative energy error.
+
+    Parameters
+    ----------
+    rel_energy_error : np.ndarray
+        Relative energy error of the simulation, with shape (N_steps,).
+    sol_t : np.ndarray
+        Solution time array with shape (N_steps,).
+    """
+    plt.figure()
+    plt.plot(sol_t, rel_energy_error)
+    plt.yscale("log")
+    plt.xlabel("Time step")
+    plt.ylabel("Relative Energy Error")
+    plt.title("Relative Energy Error vs Time Step")
+    plt.show()
+    
+def euler_cromer(a: np.ndarray, system: System, dt: float) -> None:
+    """
+    Advance one step with the Euler-Cromer method.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Gravitational accelerations array with shape (N, 3).
+    system : System
+        System object.
+    dt : float
+        Time step.
+    """
+    acceleration(a, system)
+    system.v += a * dt
+    system.x += system.v * dt
+    
+def rk4(a: np.ndarray, system: System, dt: float) -> None:
+    """
+    Advance one step with the RK4 method.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Gravitational accelerations array with shape (N, 3).
+    system : System
+        System object.
+    dt : float
+        Time step.
+    """
+    num_stages = 4
+    coeff = np.array([0.5, 0.5, 1.0])
+    weights = np.array([1.0, 2.0, 2.0, 1.0]) / 6.0
+
+    # Allocate memory and initialize arrays
+    x0 = system.x.copy()
+    v0 = system.v.copy()
+    xk = np.zeros((num_stages, system.num_particles, 3))
+    vk = np.zeros((num_stages, system.num_particles, 3))
+
+    # Initial stage
+    acceleration(a, system)
+    xk[0] = v0
+    vk[0] = a
+
+    # Compute the stages
+    for stage in range(1, num_stages):
+        # Compute acceleration
+        system.x = x0 + dt * coeff[stage - 1] * xk[stage - 1]
+        acceleration(a, system)
+
+        # Compute xk and vk
+        xk[stage] = v0 + dt * coeff[stage - 1] * vk[stage - 1]
+        vk[stage] = a
+
+    # Advance step
+    dx = 0.0
+    dv = 0.0
+    for stage in range(num_stages):
+        dx += weights[stage] * xk[stage]
+        dv += weights[stage] * vk[stage]
+
+    system.x = x0 + dt * dx
+    system.v = v0 + dt * dv
+    
+def leapfrog(a: np.ndarray, system: System, dt: float) -> None:
+    """
+    Advance one step with the LeapFrog method.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Gravitational accelerations array with shape (N, 3).
+    system : System
+        System object.
+    dt : float
+        Time step.
+    """
+    # Velocity kick (v_1/2)
+    acceleration(a, system)
+    system.v += a * 0.5 * dt
+
+    # Position drift (x_1)
+    system.x += system.v * dt
+
+    # Velocity kick (v_1)
+    acceleration(a, system)
+    system.v += a * 0.5 * dt
+    
+def print_simulation_info_adaptive_step_size(
+    system: System,
+    tf: float,
+    tolerance: float,
+    initial_dt: float,
+    output_interval: float,
+    sol_size: int,
+) -> None:
+    print("----------------------------------------------------------")
+    print("Simulation Info:")
+    print(f"num_particles: {system.num_particles}")
+    print(f"G: {system.G}")
+    print(f"tf: {tf} days")
+    print(f"tolerance: {tolerance}")
+    print(f"Initial dt: {initial_dt} days")
+    print()
+    print(f"Output interval: {output_interval} days")
+    print(f"Estimated solution size: {sol_size}")
+    print("----------------------------------------------------------")
+    
+def plot_dt(sol_dt: np.ndarray, sol_t: np.ndarray) -> None:
+    """
+    Plot the time step.
+
+    Parameters
+    ----------
+    sol_dt : np.ndarray
+        Time step array with shape (N_steps,).
+    sol_t : np.ndarray
+        Solution time array with shape (N_steps,).
+    """
+    plt.figure()
+    plt.semilogy(sol_t, sol_dt)
+    plt.xlabel("Time")
+    plt.ylabel("dt")
+    plt.show()
             
