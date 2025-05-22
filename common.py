@@ -7,10 +7,10 @@ class System:
         self, num_particles: int, x: np.ndarray, v: np.ndarray, m: np.ndarray, G:float
     ) -> None:
         self.num_particles = num_particles
-        self.x = x
-        self.v = v
-        self.m = m
-        self.G = G
+        self.x = x #array di posizioni, ogni cella è una tupla (x,y,z)
+        self.v = v #array di velocità, ogni cella è una tupla (vx,vy,vz)
+        self.m = m #array di masse, ogni cella è un valore singolo 
+        self.G = G #costante gravitazionale
     
     def center_of_mass_correction(self) -> None:
         """
@@ -28,6 +28,25 @@ class System:
         v_cm /= M
         self.x -= x_cm
         self.v -= v_cm
+    
+    def copy(self) -> "System":
+        """
+        Crea una copia indipendente del sistema (deep copy).
+
+        Returns
+        -------
+        System
+            Un nuovo oggetto System con copie indipendenti di x, v, m, G.
+        """
+        return System(
+            num_particles=self.num_particles,
+            x=self.x.copy(),
+            v=self.v.copy(),
+            m=self.m.copy(),
+            G=self.G
+        )
+
+
         
 def get_initial_conditions(
     initial_condition: str,
@@ -52,11 +71,11 @@ def get_initial_conditions(
     legend: bool
         Whether to show the legend.
     """
-    # Conversion factor from km^3 s^-2 to AU^3 d^-2
+    # Conversion factor from km^3/s^-2 to AU^3/d^-2
     CONVERSION_FACTOR = (86400**2) / (149597870.7**3)
 
     # GM values (km^3 s^-2)
-    # ref: https://ssd.jpl.nasa.gov/doc/Park.2021.AJ.DE440.pdf
+    # ref: https://ssd.jpl.nasa.gov/doc/Park.2021.AJ.DE440.pdf db JPL Horizons della NASA (1 Gen 2024)
     GM_KM_S = {
         "Sun": 132712440041.279419,
         "Mercury": 22031.868551,
@@ -468,7 +487,8 @@ def acceleration(
     G = system.G
 
     # Compute the displacement vector
-    r_ij = x[:, np.newaxis, :] - x[np.newaxis, :, :]
+    r_ij = x[:, np.newaxis, :] - x[np.newaxis, :, :] #matrice 3d (N,N,3) dove ogni elemento r_ij[i,j] è il vettore che va 
+                                                     #da i a j
 
     # Compute the distance
     r_norm = np.linalg.norm(r_ij, axis=2)
@@ -477,7 +497,7 @@ def acceleration(
     with np.errstate(divide="ignore", invalid="ignore"):
         inv_r_cubed = 1.0 / (r_norm * r_norm * r_norm)
 
-    # Set diagonal elements to 0 to avoid self-interaction
+    # Set diagonal elements to 0 to avoid self-interaction, il corpo agisce con se stesso => no sense
     np.fill_diagonal(inv_r_cubed, 0.0)
 
     # Compute the acceleration
@@ -601,9 +621,9 @@ def compute_rel_energy_error(
         x = sol_x[count]
         v = sol_v[count]
         for i in range(num_particles):
-            # KE
+            # KE cinetica
             rel_energy_error[count] += 0.5 * m[i] * np.linalg.norm(v[i]) ** 2
-            # PE
+            # PE potenziale
             for j in range(i + 1, num_particles):
                 rel_energy_error[count] -= G * m[i] * m[j] / np.linalg.norm(x[i] - x[j])
 
@@ -634,6 +654,8 @@ def plot_rel_energy_error(rel_energy_error: np.ndarray, sol_t: np.ndarray) -> No
     plt.show()
     
 def euler_cromer(a: np.ndarray, system: System, dt: float) -> None:
+    #in eulero calcoliamo prima la posozione e poi la velocità, in eulero cromer prima la velocità e poi la posizione 
+    # => più stabile per sys conservativi (oscilatori, orbitali)
     """
     Advance one step with the Euler-Cromer method.
 
@@ -651,6 +673,7 @@ def euler_cromer(a: np.ndarray, system: System, dt: float) -> None:
     system.x += system.v * dt
     
 def rk4(a: np.ndarray, system: System, dt: float) -> None:
+    #top per systemi ode (equazioni differenziali ordinarie)
     """
     Advance one step with the RK4 method.
 

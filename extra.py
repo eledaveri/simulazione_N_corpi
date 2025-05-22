@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 import common
 
-OPTION = 2
+OPTION = 1
 FRAMES_DIR = Path(__file__).parent.parent / "figures" / "frames"
 FRAMES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -19,7 +19,8 @@ if OPTION == 0:
     INITIAL_CONDITION = "solar_system"
     TF = 200.0 * 365.24  # 200 years to days
     TOLERANCE = 1e-8
-    OUTPUT_INTERVAL = 0.01 * 365.24  # 0.01 year to days
+    # OUTPUT_INTERVAL = 0.01 * 365.24  # 0.01 year to days
+    OUTPUT_INTERVAL = 0.5 * 365.24  # 0.5 year to days
     INITIAL_DT = 1.0
 
 # Pyth-3-body
@@ -27,7 +28,9 @@ elif OPTION == 1:
     INITIAL_CONDITION = "pyth-3-body"
     TF = 70.0
     TOLERANCE = 1e-13
-    OUTPUT_INTERVAL = 0.001
+    # OUTPUT_INTERVAL = 0.001
+    OUTPUT_INTERVAL = 0.05
+    # OUTPUT_INTERVAL = 0.5 * 365.24
     INITIAL_DT = 0.01
 
 elif OPTION == 2:
