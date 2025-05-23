@@ -439,6 +439,41 @@ def get_initial_conditions(
         legend = True
 
         return system, labels, colors, legend
+    
+    elif initial_condition == "binary_star_planet":
+        # Parametri del sistema binario HD 176051 + un pianeta
+        G = GM_AU_DAY["Sun"]  # Costante G già in AU^3/d^2
+
+        # Masse in unità di massa solare
+        m = np.array([
+            1.07,  # Stella A
+            0.71,  # Stella B
+            0.0015  # Pianeta (~1.5 M_J, convertito in unità solari)
+        ])
+
+        # Posizioni iniziali (AU)
+        x = np.array([
+            [0.0, -0.5, 0.0],  # Stella A
+            [0.0, 0.5, 0.0],   # Stella B
+            [1.76, 0.0, 0.0],  # Pianeta
+        ])
+
+        # Velocità iniziali (AU/d)
+        v = np.array([
+            [0.012, 0.0, 0.0],    # Stella A
+            [-0.018, 0.0, 0.0],   # Stella B
+            [0.0, 0.010, 0.0],    # Pianeta
+        ])
+
+        system = System(num_particles=3, x=x, v=v, m=m, G=G)
+        system.center_of_mass_correction()
+
+        labels = ["Star A", "Star B", "Planet"]
+        colors = ["orange", "red", "blue"]
+        legend = True
+
+        return system, labels, colors, legend
+
 
     else:
         raise ValueError(f"Initial condition not recognized: {initial_condition}.")
